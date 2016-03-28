@@ -5,60 +5,66 @@
 //  +--------------------------------------+
 //  scene.h
 
-#ifdef WIN32
-  #include <windows.h>
-#endif
+#pragma once
 
-#if defined(WIN32) || defined(linux)
-  #include <GL/gl.h>
-  #include <GL/glut.h>
-#elif defined(__APPLE__)
-  #include <OpenGL/gl.h>
-  #include <GLUT/glut.h>
-#endif
+#include "gl_header.h"
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#ifdef WIN32
-  #define strcasecmp _stricmp
-#endif
+#include <string>
+#include <vector>
 
 #include <imageIO.h>
+
+#include <glm/glm.hpp>
 
 // ============================================================================================= //
 //  
 //
 //
 // ============================================================================================= //
+// Triangles ---
 
 struct VertexAttrib
 {
-  glm::vec3 Kd;  // Material diffuse.
-  glm::vec3 Ks;  // Material specular.
-  glm::vec3 n;   // Vertex normal.
+  glm::dvec3 Kd;  // Material diffuse.
+  glm::dvec3 Ks;  // Material specular.
+  glm::dvec3 n;   // Vertex normal.
   double shininess;  // Alpha component.
 };
 
 struct Triangle  // Triangle intersection data.
 {
-  glm::vec3 a, b, c;  // Three vertices;
+  glm::dvec3 v[3];  // Three vertices;
 };
 
 struct TriangleAttrib
 {
-  VertexAttrib a, b, c;
+  VertexAttrib v[3];
 };
 
 // ============================================================================================= //
+// Quadrics ---
 
 struct Sphere  // Sphere intersection data.
 {
-  glm::vec3 Xc;
+  glm::dvec3 pos;
   double radius;
 };
 
-typedef VertexAttrib SphereAttrib;  // Sphere material properties.
+struct SphereAttrib  // Sphere material attributes.
+{
+  glm::dvec3 Kd;  // Material diffuse.
+  glm::dvec3 Ks;  // Material specular.
+  double shininess;  // Alpha component.
+};
+
+// ============================================================================================= //
+// Light sources.
+
+struct Light
+{
+  glm::dvec3 pos;
+  glm::dvec3 col;
+};
 
 // ============================================================================================= //
 
@@ -69,19 +75,25 @@ public:
   Scene() {  }
 
   // Loads scene from a file.
-  bool Load(const std::string & file);
+  bool Load(const std::string & filePath);
 
-  // RayCast - returns a RGB vec3 containing the color of intersection.
-  glm::vec3 RayCast(const glm::vec3 & ray, const glm::vec3 & C) const;
+  void Log(std::ostream & stream);
+
+  // RayCast - returns a RGB dvec3 containing the color of intersection.
+  glm::dvec3 RayCast(const glm::dvec3 & ray, const glm::dvec3 & C) const;
 
 private:
   // List of all triangles and list of all corresponding attributes.
   std::vector<Triangle> mTriangles;
-  std::vecotr<TriangleAttrib> mTriangleAttribList;
+  std::vector<TriangleAttrib> mTriangleAttribList;
 
   // List of all spheres and list of all corresponding attributes.
-  std::vector<Sphere> mListSpheres;
+  std::vector<Sphere> mSpheres;
   std::vector<SphereAttrib> mSphereAttribList;
+
+  // List of all light sources.
+  std::vector<Light> mLights;
+  glm::dvec3 mAmbLight;
 
 };
 
