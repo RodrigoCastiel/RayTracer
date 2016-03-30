@@ -11,6 +11,10 @@
 #include <iostream>
 #include "gl_header.h"
 
+#include "scene.h"
+#include "camera.h"
+#include "math_functions.h"
+
 const unsigned kDefaultWidth  = 640;
 const unsigned kDefaultHeight = 480;
 const unsigned kFormatSize = 3;
@@ -38,7 +42,7 @@ struct ImgBuffer
   void Save(const std::string & filePath)
   {
     ImageIO img(width, height, kFormatSize, data);
-  
+
     if (img.save(filePath.c_str(), ImageIO::FORMAT_JPEG) != ImageIO::OK)
     {
       std::cerr << "ERROR Saving image buffer (JPEG) at " << filePath << ".\n";
@@ -55,19 +59,15 @@ struct ImgBuffer
     glPointSize(2.0);  
     glBegin(GL_POINTS);
 
-    //a simple test output
     for(unsigned int y = 0; y < height; y++)
     {
       for(unsigned int x = 0; x < width; x++)
       {
         unsigned char * pixel = GetPixel(x, y);
-        pixel[0] = x % 256;
-        pixel[1] = y % 256;
-        pixel[2] = (x * y + x + y) % 256;
         glColor3f((static_cast<float>(pixel[0])) / 255.0f, 
                   (static_cast<float>(pixel[1])) / 255.0f, 
                   (static_cast<float>(pixel[2])) / 255.0f);
-        glVertex2i(x,y);
+        glVertex2i(x, height - y);
       }
     }
 
@@ -86,7 +86,13 @@ public:
   RayTracer() {  }
 
   // Performs Ray Tracing algorithm and outputs to internal ImgBuffer.
-  void ComputeFrame(const Scene & scene, const Camera & camera);
+  void RenderFrame(const Scene & scene, const Camera & camera);
+
+  // Outputs current frame to filePath as JPEFG file.
+  void SaveFrame(const std::string & filePath);
+
+  // Displays internal buffer on the screen.
+  void DrawFrame();
 
   // Returns the internal ImgBuffer.
   ImgBuffer<kMaxWidth, kMaxHeight> & GetFrame() { return mBuffer; }

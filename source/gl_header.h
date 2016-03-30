@@ -12,9 +12,6 @@
   #include <GLUT/glut.h>
 #endif
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 #ifdef WIN32
   #define strcasecmp _stricmp
 #endif

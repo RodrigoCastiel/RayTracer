@@ -9,6 +9,8 @@
 
 #include <glm/glm.hpp>
 
+const double kEpsilon = 1e-5;
+
 struct Triangle;
 struct Sphere;
 
@@ -22,11 +24,3 @@ bool IntersectRay(const Sphere & sphere, const glm::vec3 & ray, const glm::vec3 
                   glm::vec3 & intersection, float & t);
 
 // ============================================================================================= //
-// Triangle Barycentric coordinates.
-
-void BarycentricCoord(const Triangle & triangle, const glm::vec3 & P, glm::vec3 & barycentric);
-
-inline float TriangleArea(const glm::vec3 & A, const glm::vec3 & B, const glm::vec3 & C)
-{
-  return 0.5;
-}

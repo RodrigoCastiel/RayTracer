@@ -13,32 +13,47 @@
 #include <vector>
 
 #include <imageIO.h>
-
 #include <glm/glm.hpp>
 
 // ============================================================================================= //
-//  
+// DATA STORAGE ARCHITECTURE
 //
+//  Instead of the usual storage architecture -- list of all struct Triangle containing all tri-
+//  angle attributes -- class Scene implements a Data-Oriented Designed (against OO design).
+//
+//  It makes the computation of intersection faster, because the data used for this is compacted
+//  in a single vector, which is cache-friendly. Then, by walking through all triangles to com-
+//  pute an intersection the requested data from CPU will probably be in cache, therefore avoid-.
+//  cache misses. This is applied for all data in Scene.
 //
 // ============================================================================================= //
 // Triangles ---
 
-struct VertexAttrib
-{
-  glm::dvec3 Kd;  // Material diffuse.
-  glm::dvec3 Ks;  // Material specular.
-  glm::dvec3 n;   // Vertex normal.
-  double shininess;  // Alpha component.
-};
+// struct VertexAttrib
+// {
+//   glm::vec3 Kd;  // Material diffuse.
+//   glm::vec3 Ks;  // Material specular.
+//   glm::vec3 n;   // Vertex normal.
+//   float shininess;  // Alpha component.
+// };
 
 struct Triangle  // Triangle intersection data.
 {
-  glm::dvec3 v[3];  // Three vertices;
+  glm::vec3 v[3];  // Three vertices;
 };
+
+// struct TriangleAttrib
+// {
+//   VertexAttrib v[3];
+// };
 
 struct TriangleAttrib
 {
-  VertexAttrib v[3];
+  // Data is stored as a matrix so it is faster to interpolate using barycentric coordinates.
+  glm::mat3 Kd;  // Each column corresponds to a vertex diffuse  material.
+  glm::mat3 Ks;  // Each column corresponds to a vertex specular material.
+  glm::mat3 n;   // Each column corresponds to a vertex normal.
+  glm::vec3 shininess;  // Each element corresponds to a vertex shininess.
 };
 
 // ============================================================================================= //
@@ -46,24 +61,24 @@ struct TriangleAttrib
 
 struct Sphere  // Sphere intersection data.
 {
-  glm::dvec3 pos;
-  double radius;
+  glm::vec3 pos;
+  float radius;
 };
 
 struct SphereAttrib  // Sphere material attributes.
 {
-  glm::dvec3 Kd;  // Material diffuse.
-  glm::dvec3 Ks;  // Material specular.
-  double shininess;  // Alpha component.
+  glm::vec3 Kd;  // Material diffuse.
+  glm::vec3 Ks;  // Material specular.
+  float shininess;  // Alpha component.
 };
 
 // ============================================================================================= //
-// Light sources.
+// Light sources ---
 
 struct Light
 {
-  glm::dvec3 pos;
-  glm::dvec3 col;
+  glm::vec3 pos;
+  glm::vec3 col;
 };
 
 // ============================================================================================= //
@@ -77,13 +92,15 @@ public:
   // Loads scene from a file.
   bool Load(const std::string & filePath);
 
+  // TraceRay - returns a RGB vec3 containing the color of intersection.
+  glm::vec3 TraceRay(const glm::vec3 & r, const glm::vec3 & O) const;
+
+  // Prints a log containing general Scene data.
   void Log(std::ostream & stream);
 
-  // RayCast - returns a RGB dvec3 containing the color of intersection.
-  glm::dvec3 RayCast(const glm::dvec3 & ray, const glm::dvec3 & C) const;
-
 private:
-  // List of all triangles and list of all corresponding attributes.
+  // List of all triangles 
+  // and list of all corresponding attributes.
   std::vector<Triangle> mTriangles;
   std::vector<TriangleAttrib> mTriangleAttribList;
 
@@ -93,7 +110,12 @@ private:
 
   // List of all light sources.
   std::vector<Light> mLights;
-  glm::dvec3 mAmbLight;
-
+  glm::vec3 mAmbLight;
 };
+
+
+
+
+
+
 

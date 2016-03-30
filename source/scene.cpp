@@ -13,6 +13,33 @@
 
 #include "math_functions.h"
 
+// ============================================================================================= //
+// RAY TRACING METHODS
+
+glm::vec3 Scene::TraceRay(const glm::vec3 & r, const glm::vec3 & O) const
+{
+  Triangle triangle = mTriangles[0];
+  
+  float t;
+  glm::vec3 intersection;
+  glm::vec3 barycentric;
+
+  bool intersects = IntersectRay(triangle, r, O, intersection, barycentric, t);
+
+  if (intersects)
+  {
+    TriangleAttrib attrib = mTriangleAttribList[0];
+    return attrib.Kd * barycentric;
+  }
+  else
+  {
+    return glm::vec3(0, 0, 0);
+  }
+}
+
+// ============================================================================================= //
+// FILE LOADING METHODS
+
 // Parse 3-tuple attributes, such as position, color and so on.
 bool ParseAttribute(std::ifstream & file, const std::string & expectedName, glm::vec3 & v)
 {
@@ -25,7 +52,7 @@ bool ParseAttribute(std::ifstream & file, const std::string & expectedName, glm:
     return false;
   }
 
-  file >> v[0] >> v[1] >> v[0];
+  file >> v[0] >> v[1] >> v[2];
 
   if (file.fail())
   {
@@ -116,20 +143,30 @@ bool Scene::Load(const std::string & filePath)
 
       for (int i = 0; i < 3; i++) // Read all vertices.
       {
+        glm::vec3 Kd, Ks, n;
+        float shininess;
+
         if (!(ParseAttribute(file, "pos:", triangle.v[i])  &&
-              ParseAttribute(file, "nor:", attrib.v[i].n)  &&
-              ParseAttribute(file, "dif:", attrib.v[i].Kd) &&
-              ParseAttribute(file, "spe:", attrib.v[i].Ks) &&
-              ParseAttribute(file, "shi:", attrib.v[i].shininess)
+              ParseAttribute(file, "nor:", n)  &&
+              ParseAttribute(file, "dif:", Kd) &&
+              ParseAttribute(file, "spe:", Ks) &&
+              ParseAttribute(file, "shi:", shininess)
             ))   // Failure, no new triangle.
         { 
           std::cout << "\tRefer to triangle number " << mTriangles.size() << ".\n";
           return false;
         }
+
+        printf("v %.2f %.2f %.2f\n", triangle.v[i][0], triangle.v[i][1], triangle.v[i][2]);
+
+        attrib.Kd[i] = Kd;
+        attrib.Ks[i] = Ks;
+        attrib.n[i]  = n;
+        attrib.shininess[i] = shininess;
       }
+      printf("\n");
 
       mTriangles.push_back(triangle);
-      // TODO: ADD PLANE HERE.
       mTriangleAttribList.push_back(attrib);
     }
     else if (strcasecmp(type.c_str(), "sphere") == 0)  // Sphere.

@@ -9,7 +9,7 @@
 
 #include <glm/gtx/transform.hpp>
 
-glm::vec3 Camera::CastRay(float x_v, float y_v, float w, float h) 
+glm::vec3 Camera::CastRay(float x_v, float y_v, float w, float h) const
 {
   // Compute boundaries of near clip plane.
   float x_max = 1.0;
@@ -27,7 +27,7 @@ glm::vec3 Camera::CastRay(float x_v, float y_v, float w, float h)
                      * glm::rotate(-mRot[1], glm::vec3(0, 1, 0)) 
                      * glm::scale(mScale);
 
-  // Unproject point ->    z = 1, w = 1. 
+  // Unproject point to  xp, yp, z = 1, w = 1. 
   glm::vec4 ray = glm::inverse(P*V) * glm::dvec4(xp, yp, 1.0, 1.0);
 
   return glm::normalize(glm::vec3(ray[0], ray[1], ray[2]));

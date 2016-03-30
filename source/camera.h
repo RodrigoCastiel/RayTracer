@@ -15,8 +15,8 @@ public:
   Camera() { } 
 
   // Computes the line which goes from camera origin to mouse coords at projection plane.
-  glm::vec3 CastRay(float x_v, float y_v, float w, float h);
-  glm::vec3 GetCenterCoordinates() { return mPos; }
+  glm::vec3 CastRay(float x_v, float y_v, float w, float h) const;
+  glm::vec3 GetCenterCoordinates() const { return mPos; }
   
   // Setters and getters.
   void SetPosition(float x, float y, float z);
