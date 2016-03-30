@@ -8,11 +8,13 @@
 #include "scene.h"
 
 #include <fstream>
-#include <iostream>
 #include <cstring>
+#include <iostream>
+
+#include "math_functions.h"
 
 // Parse 3-tuple attributes, such as position, color and so on.
-bool ParseAttribute(std::ifstream & file, const std::string & expectedName, glm::dvec3 & v)
+bool ParseAttribute(std::ifstream & file, const std::string & expectedName, glm::vec3 & v)
 {
   std::string name;
   file >> name;
@@ -35,7 +37,7 @@ bool ParseAttribute(std::ifstream & file, const std::string & expectedName, glm:
 }
 
 // Parse a single attribute, such as shininess.
-bool ParseAttribute(std::ifstream & file, const std::string & expectedName, double & a)
+bool ParseAttribute(std::ifstream & file, const std::string & expectedName, float & a)
 {
   std::string name;
   file >> name;
@@ -127,6 +129,7 @@ bool Scene::Load(const std::string & filePath)
       }
 
       mTriangles.push_back(triangle);
+      // TODO: ADD PLANE HERE.
       mTriangleAttribList.push_back(attrib);
     }
     else if (strcasecmp(type.c_str(), "sphere") == 0)  // Sphere.
@@ -166,7 +169,7 @@ bool Scene::Load(const std::string & filePath)
         return false;
       }
     }
-    // INSERT HERE NEW TYPE OF OBJECT.
+    // INSERT HERE NEW TYPES OF OBJECT.
     
     else  // Invalid object.
     {
@@ -174,8 +177,6 @@ bool Scene::Load(const std::string & filePath)
       return false;
     }
   }
-
-  Scene::Log(std::cout);
 
   return true;
 }
