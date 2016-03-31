@@ -13,7 +13,7 @@
 bool IntersectRay(const Triangle & triangle, const glm::vec3 & ray, const glm::vec3 & O,
                   glm::vec3 & intersection, glm::vec3 & baryCoord, float & t)
 {
-  //   The algorithm used for intersection is based on computing a linear combination
+  // The algorithm used for intersection is based on computing a linear combination
   // of the vectors outgoing from the first triangle vertex and the ray vertex, which
   // outputs directly the parameter t of intersection and two of the barycentric 
   // coordinates.

@@ -36,8 +36,8 @@ private:
   // Projection parameters
   float mFovy   {M_PI/3.0};
   float mAspect {4096.0/2160.0};
-  float mFarZ   {500.0};
-  float mNearZ  { 0.1}; 
+  float mFarZ   {100.0};
+  float mNearZ  { 0.01}; 
 };
 
 inline 

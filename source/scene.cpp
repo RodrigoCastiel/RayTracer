@@ -7,34 +7,124 @@
 
 #include "scene.h"
 
+#include <cmath>
 #include <fstream>
 #include <cstring>
 #include <iostream>
+
+#include <limits>
 
 #include "math_functions.h"
 
 // ============================================================================================= //
 // RAY TRACING METHODS
 
-glm::vec3 Scene::TraceRay(const glm::vec3 & r, const glm::vec3 & O) const
-{
-  Triangle triangle = mTriangles[0];
-  
-  float t;
-  glm::vec3 intersection;
-  glm::vec3 barycentric;
-
-  bool intersects = IntersectRay(triangle, r, O, intersection, barycentric, t);
-
-  if (intersects)
+glm::vec3 Scene::TraceRay(const glm::vec3 & r, const glm::vec3 & O, int depth) const
+{  
+  if (depth > 0)
   {
-    TriangleAttrib attrib = mTriangleAttribList[0];
-    return attrib.Kd * barycentric;
+    float t;
+    glm::vec3 intersection;
+    glm::vec3 barycentric;
+
+    int nearestTriangleIndex = Scene::NearestTriangle(r, O, intersection, barycentric, t);
+
+    if (nearestTriangleIndex != -1)
+    {
+      const Triangle& triangle = mTriangles[nearestTriangleIndex];
+      const TriangleAttrib& attrib = mTriangleAttribList[nearestTriangleIndex];
+
+      glm::vec3 f_pos = triangle.v[0]*barycentric[0]
+                      + triangle.v[1]*barycentric[1]
+                      + triangle.v[2]*barycentric[2];
+      glm::vec3 n  = glm::normalize(attrib.n * barycentric);
+      glm::vec3 Kd = attrib.Kd * barycentric;
+      glm::vec3 Ks = attrib.Ks * barycentric;
+      float alpha = glm::dot(attrib.shininess, barycentric);
+
+      glm::vec3 abs_color = Scene::ComputePhongIllumination(f_pos, n, Kd, Ks, alpha);
+
+      if (depth == 1)
+      {
+        return abs_color * (glm::vec3(1) - Ks);
+      }
+      else
+      {
+        return  Ks * Scene::TraceRay(glm::normalize(glm::reflect(r, n)), f_pos, depth-1)
+              + (glm::vec3(1) - Ks) * abs_color;
+      }
+    }
+    else
+    {
+      return mBackgroundColor;
+    }
   }
   else
   {
-    return glm::vec3(0, 0, 0);
+    return mBackgroundColor;
   }
+}
+
+glm::vec3 Scene::ComputePhongIllumination(const glm::vec3 & f_pos, const glm::vec3 & n, 
+  const glm::vec3 & Kd, const glm::vec3 & Ks, float alpha) const
+{
+  glm::vec3 Id(0.0f);
+  glm::vec3 Is(0.0f);
+
+  glm::vec3 r = glm::normalize(glm::reflect(f_pos, n));
+
+  for (auto& light : mLights)
+  { 
+    glm::vec3 l = glm::normalize(light.pos - f_pos);  // Vector from frag to light.
+
+    glm::vec3 intersection, barycentric;
+    float t;
+
+    int nearestTriangleIndex = Scene::NearestTriangle(l, f_pos, intersection, barycentric, t);
+
+    if ((nearestTriangleIndex == -1) || (t > glm::length(light.pos - f_pos) + kEpsilon))
+    {
+      float dot_l_n = glm::dot(l, n);
+      float dot_l_r = glm::dot(l, r);
+
+      // Basic lighting - Phong model.
+      Id += light.col * Kd * std::max(dot_l_n, 0.0f);
+      Is += light.col * Ks * std::pow(std::max(dot_l_r, 0.0f), alpha);
+    }
+  }
+
+  return (mAmbLight + (Id + Is));
+}
+
+int Scene::NearestTriangle(const glm::vec3 & r, const glm::vec3 & O,
+                           glm::vec3 & intersection, glm::vec3 & baryCoord, float & t) const
+{
+  float nearest_t = std::numeric_limits<float>::max();
+  int nearestTriangleIndex = -1;
+
+  glm::vec3 I;  // Intersection point.
+  glm::vec3 B;  // Barycentric coordinates.
+  float t_test;
+
+  // Force brute - search over all triangles.
+  for (int i = 0; i < mTriangles.size(); i++)
+  {
+    // Test if triangle i has an intersection with input ray.
+    if (IntersectRay(mTriangles[i], r, O, I, B, t_test))
+    {
+      if (t_test < nearest_t)  // Found a better triangle!
+      {
+        nearestTriangleIndex = i;
+        nearest_t = t_test;
+
+        intersection = I;
+        baryCoord = B;
+        t = t_test;
+      }
+    }
+  }
+
+  return nearestTriangleIndex;
 }
 
 // ============================================================================================= //
@@ -157,14 +247,11 @@ bool Scene::Load(const std::string & filePath)
           return false;
         }
 
-        printf("v %.2f %.2f %.2f\n", triangle.v[i][0], triangle.v[i][1], triangle.v[i][2]);
-
         attrib.Kd[i] = Kd;
         attrib.Ks[i] = Ks;
         attrib.n[i]  = n;
         attrib.shininess[i] = shininess;
       }
-      printf("\n");
 
       mTriangles.push_back(triangle);
       mTriangleAttribList.push_back(attrib);

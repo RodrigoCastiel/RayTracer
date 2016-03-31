@@ -9,7 +9,7 @@
 
 #include <glm/glm.hpp>
 
-const double kEpsilon = 1e-5;
+const double kEpsilon = 1e-4;
 
 struct Triangle;
 struct Sphere;

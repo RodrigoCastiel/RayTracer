@@ -93,7 +93,20 @@ public:
   bool Load(const std::string & filePath);
 
   // TraceRay - returns a RGB vec3 containing the color of intersection.
-  glm::vec3 TraceRay(const glm::vec3 & r, const glm::vec3 & O) const;
+  glm::vec3 TraceRay(const glm::vec3 & r, const glm::vec3 & O, int depth = 2) const;
+
+  // Returns the index of the nearest triangle reachable from input ray.
+  // If there is a valid triangle, it also outputs barycentric coordinates,
+  // depth and intersectino point.
+  // If there is no triangle which intersects with input ray, return value
+  // will be 0.
+  int NearestTriangle(const glm::vec3 & r, const glm::vec3 & O,
+                      glm::vec3 & intersection, glm::vec3 & baryCoord, float & t) const;
+
+
+  //
+  glm::vec3 ComputePhongIllumination(const glm::vec3 & f_pos, const glm::vec3 & n, 
+    const glm::vec3 & Kd, const glm::vec3 & Ks, float alpha) const;
 
   // Prints a log containing general Scene data.
   void Log(std::ostream & stream);
@@ -111,6 +124,7 @@ private:
   // List of all light sources.
   std::vector<Light> mLights;
   glm::vec3 mAmbLight;
+  glm::vec3 mBackgroundColor { 0.0f, 0.0f, 0.0f };
 };
 
 
