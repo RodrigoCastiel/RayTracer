@@ -6,6 +6,7 @@
 //  main.cpp
 
 #include <cstdio>
+#include <chrono>
 
 #include "gl_header.h"
 
@@ -19,20 +20,30 @@
 
 int mode = MODE_DISPLAY;
 
+Scene scene;
+Camera camera;
+RayTracer rayTracer;
+
 void display()
 {
   //hack to make it only draw once
   static int once = 0;
   if(!once)
   {
-    ImgBuffer<kDefaultWidth, kDefaultHeight> img;
-    img.Draw();
+    rayTracer.ParallelRender(scene, camera);
+    rayTracer.SaveFrame("without_anti-aliasing.jpg");
+
+    rayTracer.AdaptativeAntiAliasing(scene, camera);
+    rayTracer.SaveFrame("with_anti-aliasing.jpg");
+
+    rayTracer.DrawFrame();
     glFlush();
+
     if(mode == MODE_JPEG)
     {
-      img.Save("blah.jpg");
+      rayTracer.SaveFrame("blah.jpg");
+      printf("Frame successfully saved.\n");
     } 
-    printf("saved\n");
   }
   once = 1;
 }
@@ -55,30 +66,7 @@ void idle()
 
 int main(int argc, char ** argv)
 {
-  Camera camera;
-
-  glm::vec3 O = camera.GetCenterCoordinates();
-  glm::vec3 r = camera.CastRay(0, 400, 400, 400);
-  Triangle triangle = { glm::vec3(-5,  0, -1),
-                        glm::vec3(+5,  0, -1),
-                        glm::vec3( 0, 10, -1)};
-
-  printf("origin = (%.2lf, %.2lf, %.2lf)'\n", O[0], O[1], O[2]);
-  printf("ray    = (%.2lf, %.2lf, %.2lf)'\n", r[0], r[1], r[2]);
-
-  glm::vec3 intersection;
-  glm::vec3 barycentric;
-  float t;
-
-  if (IntersectRay(triangle, glm::normalize(r), O, intersection, barycentric, t))
-  {
-    printf("intersection = (%.2lf, %.2lf, %.2lf)'\n", intersection[0], intersection[1], intersection[2]);
-    printf("barycentric  = (%.2lf, %.2lf, %.2lf)'\n", barycentric[0],  barycentric[1],  barycentric[2]);
-    printf("t = %lf\n\n", t);
-  }
-
-  // Scene scene;
-  // scene.Load("../scenes/SIGGRAPH.scene");
+  scene.Load("../scenes/spheres.scene");
 
   // if ((argc < 2) || (argc > 3))
   // {  
@@ -95,15 +83,15 @@ int main(int argc, char ** argv)
   //   mode = MODE_DISPLAY;
   // }
 
-  // glutInit(&argc, argv);
-  // glutInitDisplayMode(GLUT_RGBA | GLUT_SINGLE);
-  // glutInitWindowPosition(0, 0);
-  // glutInitWindowSize(kDefaultWidth, kDefaultHeight);
-  // glutCreateWindow("Ray Tracer");
-  // glutDisplayFunc(display);
-  // glutIdleFunc(idle);
-  // init();
-  // glutMainLoop();
+  glutInit(&argc, argv);
+  glutInitDisplayMode(GLUT_RGBA | GLUT_SINGLE);
+  glutInitWindowPosition(0, 0);
+  glutInitWindowSize(kDefaultWidth, kDefaultHeight);
+  glutCreateWindow("Ray Tracer");
+  glutDisplayFunc(display);
+  glutIdleFunc(idle);
+  init();
+  glutMainLoop();
 
   return 0;
 }

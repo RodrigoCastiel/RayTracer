@@ -8,6 +8,10 @@
 #pragma once
 
 #include <glm/glm.hpp>
+#include <functional>
+
+const unsigned kDefaultWidth  = 6400;
+const unsigned kDefaultHeight = 4800;
 
 class Camera
 {
@@ -29,15 +33,18 @@ public:
 
 private:
   // View parameters.
-  glm::vec3 mPos   { 0.0, 0.0, 0.0};  // Center coordinates.
-  glm::vec3 mRot   { 0.0, 0.0, 0.0};  // Rotation angles.
+  glm::vec3 mPos   { 0.0, 20.0, 17};  // Center coordinates.
+  glm::vec3 mRot   { -0.49, 0.0, 0.0};  // Rotation angles.
   glm::vec3 mScale { 1.0, 1.0, 1.0};  // Scales.
 
   // Projection parameters
   float mFovy   {M_PI/3.0};
-  float mAspect {4096.0/2160.0};
+  float mAspect {static_cast<float>(kDefaultWidth)/kDefaultHeight};
   float mFarZ   {100.0};
   float mNearZ  { 0.01}; 
+
+  // Animation function (either lambda or functor).
+
 };
 
 inline 

@@ -23,40 +23,96 @@ glm::vec3 Scene::TraceRay(const glm::vec3 & r, const glm::vec3 & O, int depth) c
 {  
   if (depth > 0)
   {
-    float t;
-    glm::vec3 intersection;
-    glm::vec3 barycentric;
+    float t_triangle, t_sphere;
+    glm::vec3 intersection, barycentric;
+    glm::vec3 intersectionSphere, normalSphere;
 
-    int nearestTriangleIndex = Scene::NearestTriangle(r, O, intersection, barycentric, t);
+    int nearestTriangleIndex = Scene::NearestTriangle(r, O, intersection, barycentric, t_triangle);
+    int nearestSphereIndex = Scene::NearestSphere(r, O, intersectionSphere, normalSphere, t_sphere);
 
-    if (nearestTriangleIndex != -1)
+    glm::vec3 f_pos, n, Kd, Ks;
+    float alpha, n_refr = 1.0f;
+
+    if ( ((nearestTriangleIndex != -1) && (nearestSphereIndex == -1))                            // Triangle only or
+      || ((nearestTriangleIndex != -1) && (nearestSphereIndex != -1) && t_triangle <= t_sphere)) // Triangle closer than sphere
     {
       const Triangle& triangle = mTriangles[nearestTriangleIndex];
       const TriangleAttrib& attrib = mTriangleAttribList[nearestTriangleIndex];
 
-      glm::vec3 f_pos = triangle.v[0]*barycentric[0]
-                      + triangle.v[1]*barycentric[1]
-                      + triangle.v[2]*barycentric[2];
-      glm::vec3 n  = glm::normalize(attrib.n * barycentric);
-      glm::vec3 Kd = attrib.Kd * barycentric;
-      glm::vec3 Ks = attrib.Ks * barycentric;
-      float alpha = glm::dot(attrib.shininess, barycentric);
+      f_pos = triangle.v[0]*barycentric[0]
+            + triangle.v[1]*barycentric[1]
+            + triangle.v[2]*barycentric[2];
+      n  = glm::normalize(attrib.n * barycentric);
+      Kd = attrib.Kd * barycentric;
+      Ks = attrib.Ks * barycentric;
+      alpha = glm::dot(attrib.shininess, barycentric);
+      n_refr = 1.0f;
+    }
+    else if ( ((nearestTriangleIndex == -1) && (nearestSphereIndex != -1))                           // Sphere only or
+           || ((nearestTriangleIndex != -1) && (nearestSphereIndex != -1) && t_sphere < t_triangle)) // Sphere closer than triangle
+    {
+      const SphereAttrib& attrib = mSphereAttribList[nearestSphereIndex];
 
-      glm::vec3 abs_color = Scene::ComputePhongIllumination(f_pos, n, Kd, Ks, alpha);
+      f_pos = intersectionSphere;
+      n = normalSphere;
+      Kd = attrib.Kd;
+      Ks = attrib.Ks;
+      alpha = attrib.shininess;
+      n_refr = attrib.n_refr;
+    }
+    else // No intersection.
+    {
+      return mBackgroundColor;
+    }
 
-      if (depth == 1)
-      {
-        return abs_color * (glm::vec3(1) - Ks);
-      }
-      else
-      {
-        return  Ks * Scene::TraceRay(glm::normalize(glm::reflect(r, n)), f_pos, depth-1)
-              + (glm::vec3(1) - Ks) * abs_color;
-      }
+    glm::vec3 abs_color = Scene::ComputePhongIllumination(f_pos, n, Kd, Ks, alpha);
+
+    if (depth == 1)
+    {
+      return abs_color * (glm::vec3(1) - Ks);
     }
     else
     {
-      return mBackgroundColor;
+      /* Calculating Reflection and Refraction */
+      // Reference: 
+      // http://graphics.stanford.edu/courses/cs148-10-summer/docs/2006--degreve--reflection_refraction.pdf
+      
+      glm::vec3 refracted_color(0.0f);
+      glm::vec3 reflected_color = Scene::TraceRay(glm::normalize(glm::reflect(r, n)), f_pos, depth-1);
+
+      float n_1 = 1.00f;   // Air.
+      float n_2 = n_refr;   //n_refr;  // Index of refraction of the sphere.
+      // Reflectance and transmittance.
+      float R = 1.0f, T = 0.0f;
+  
+      if (std::abs(n_2 - n_1) > kEpsilon)  // Different indices of refraction.
+      {
+        float cos_ti = - glm::dot(r, n);
+
+        if (cos_ti < 0.0f)  // From out to in.
+        {
+          std::swap(n_1, n_2);
+        }
+        float ratio_n = n_1/n_2;
+        float sin2_tt = ratio_n*ratio_n*(1.0f - cos_ti*cos_ti);
+        float cos_tt = (float)sqrt(1.0f - sin2_tt);
+
+        float R0 = pow((n_1 - n_2)/(n_1 + n_2), 2.0);
+
+        // Reflectance.
+        float one_minus_cos_ti = (1 - cos_ti);
+        //float power = pow(one_minus_cos_ti, 3.0);
+        R = R0 + (1.0f - R0)*one_minus_cos_ti;
+
+        // Transmittance.
+        T = 1.0f - R;
+
+        glm::vec3 refr_r = glm::normalize(ratio_n*r + (ratio_n*cos_ti - cos_tt) * n);
+        refracted_color = Scene::TraceRay(refr_r, f_pos, depth-1);
+      }
+      
+
+      return  Ks * (R*reflected_color + T*refracted_color) + (glm::vec3(1.0f) - Ks) * abs_color;
     }
   }
   else
@@ -77,12 +133,14 @@ glm::vec3 Scene::ComputePhongIllumination(const glm::vec3 & f_pos, const glm::ve
   { 
     glm::vec3 l = glm::normalize(light.pos - f_pos);  // Vector from frag to light.
 
-    glm::vec3 intersection, barycentric;
-    float t;
+    glm::vec3 intersection, temp;
+    float t_triangle, t_sphere;
 
-    int nearestTriangleIndex = Scene::NearestTriangle(l, f_pos, intersection, barycentric, t);
+    int nearestTriangleIndex = Scene::NearestTriangle(l, f_pos, intersection, temp, t_triangle);
+    int nearestSphereIndex   = Scene::NearestSphere(l, f_pos, intersection, temp, t_sphere);
 
-    if ((nearestTriangleIndex == -1) || (t > glm::length(light.pos - f_pos) + kEpsilon))
+    if ( ((nearestTriangleIndex == -1) || (t_triangle > glm::length(light.pos - f_pos) + kEpsilon))
+      && ((nearestSphereIndex   == -1) || (t_sphere   > glm::length(light.pos - f_pos) + kEpsilon)))
     {
       float dot_l_n = glm::dot(l, n);
       float dot_l_r = glm::dot(l, r);
@@ -125,6 +183,38 @@ int Scene::NearestTriangle(const glm::vec3 & r, const glm::vec3 & O,
   }
 
   return nearestTriangleIndex;
+}
+
+int Scene::NearestSphere(const glm::vec3 & r, const glm::vec3 & O,
+                         glm::vec3 & intersection, glm::vec3 & n, float & t) const
+{
+  float nearest_t = std::numeric_limits<float>::max();
+  int nearestSphereIndex = -1;
+
+  glm::vec3 I;  // Intersection point.
+  glm::vec3 normal;
+  float t_test;
+
+  // Force brute - search over all triangles.
+  for (int i = 0; i < mSpheres.size(); i++)
+  {
+    // Test if sphere i has an intersection with input ray.
+    if (IntersectRay(mSpheres[i], r, O, I, normal, t_test))
+    {
+      if (t_test < nearest_t)  // Found a better triangle!
+      {
+        nearestSphereIndex = i;
+        nearest_t = t_test;
+
+        intersection = I;
+        n = normal;
+        
+        t = t_test;
+      }
+    }
+  }
+
+  return nearestSphereIndex;
 }
 
 // ============================================================================================= //
@@ -190,11 +280,13 @@ bool Scene::Load(const std::string & filePath)
   // Open input file.
   std::ifstream file(filePath, std::ifstream::in);
 
-  if (!file.good())  // Failure - not good.
+  if (!file.is_open())  // Failure - not good.
   {
     std::cerr << "ERROR Scene file at " << filePath << " couldn't be opened." << std::endl;
     return false;
   }
+
+  float n_refr = 1.00f;
 
   // Read number of objects.
   int numObjects = 0;
@@ -268,6 +360,7 @@ bool Scene::Load(const std::string & filePath)
           ParseAttribute(file, "shi:", attrib.shininess)
         )   // Success - new sphere.
       { 
+        attrib.n_refr = n_refr;
         mSpheres.push_back(sphere);
         mSphereAttribList.push_back(attrib);
       }
@@ -293,8 +386,15 @@ bool Scene::Load(const std::string & filePath)
         return false;
       }
     }
+    else if (strcasecmp(type.c_str(), "n_refr") == 0)  // Specify new index of refraction.
+    {
+      k--;
+      if(!(file >> n_refr))
+      {
+        std::cerr << "ERROR Scene file parsing error - expected n_refr value.\n";
+      }
+    }
     // INSERT HERE NEW TYPES OF OBJECT.
-    
     else  // Invalid object.
     {
       std::cerr << "ERROR Scene file parsing error - invalid object type: '" << type << "'." << std::endl;

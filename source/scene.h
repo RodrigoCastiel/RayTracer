@@ -70,6 +70,7 @@ struct SphereAttrib  // Sphere material attributes.
   glm::vec3 Kd;  // Material diffuse.
   glm::vec3 Ks;  // Material specular.
   float shininess;  // Alpha component.
+  float n_refr;  // Index of refraction.
 };
 
 // ============================================================================================= //
@@ -93,7 +94,7 @@ public:
   bool Load(const std::string & filePath);
 
   // TraceRay - returns a RGB vec3 containing the color of intersection.
-  glm::vec3 TraceRay(const glm::vec3 & r, const glm::vec3 & O, int depth = 2) const;
+  glm::vec3 TraceRay(const glm::vec3 & r, const glm::vec3 & O, int depth = 20) const;
 
   // Returns the index of the nearest triangle reachable from input ray.
   // If there is a valid triangle, it also outputs barycentric coordinates,
@@ -103,6 +104,8 @@ public:
   int NearestTriangle(const glm::vec3 & r, const glm::vec3 & O,
                       glm::vec3 & intersection, glm::vec3 & baryCoord, float & t) const;
 
+  int NearestSphere(const glm::vec3 & r, const glm::vec3 & O,
+                    glm::vec3 & intersection, glm::vec3 & n, float & t) const;
 
   //
   glm::vec3 ComputePhongIllumination(const glm::vec3 & f_pos, const glm::vec3 & n, 

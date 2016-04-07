@@ -20,13 +20,10 @@
 #include "math_functions.h"
 
 const float kGradientThreshold = 0.05f;
-
-const unsigned kDefaultWidth  = 640;
-const unsigned kDefaultHeight = 480;
 const unsigned kFormatSize = 3;
 
-const unsigned kMaxWidth  = 4096;
-const unsigned kMaxHeight = 2160;
+const unsigned kMaxWidth  = 6400;
+const unsigned kMaxHeight = 4800;
 
 // ============================================================================================= //
 

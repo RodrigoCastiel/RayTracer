@@ -40,8 +40,63 @@ bool IntersectRay(const Triangle & triangle, const glm::vec3 & ray, const glm::v
 }
 
 
-bool IntersectRay(const Sphere & sphere, const glm::vec3 & ray, const glm::vec3 & C,
-                  glm::vec3 & intersection, float & t)
+bool IntersectRay(const Sphere & sphere, const glm::vec3 & r, const glm::vec3 & O,
+                  glm::vec3 & intersection, glm::vec3 & n, float & t)
 {
-  return false;
+  glm::vec3 OC = O - sphere.pos;
+  float b = 2.0f * glm::dot(r, OC);
+  float c = glm::dot(OC, OC) - sphere.radius*sphere.radius;
+  float delta = b*b - 4.0f*c;
+
+  // Check if (b^2 - 4c >= 0)
+  if (delta < -kEpsilon)
+  {
+    return false;
+  }
+  else if (delta >= 0.0f && std::abs(delta) < kEpsilon)
+  {
+    t = b * (-0.5f);
+    intersection = O + t*r;
+    n = glm::normalize(intersection-sphere.pos);
+    return true;
+  }
+  else
+  {
+    float t0 = 0.5f * (-b + sqrt(delta)); // out/in intersection -(
+    float t1 = 0.5f * (-b - sqrt(delta)); // in/out intersection )-
+
+    if (t0 > t1) // Order t0 and t1.
+    {
+      std::swap(t0, t1);
+    }
+
+    if (t0 > kEpsilon)  // out->in intersection occurs in t0.
+    {
+      // set outgoing normal
+      t = t0;
+      intersection = O + t*r;
+      n = glm::normalize(intersection-sphere.pos);
+    }
+    else // t0 has a non-visible intersection.
+    {
+      if (t1 > kEpsilon)  // in->out intersection occurs in t1.
+      {
+        // set incoming normal
+        t = t1;
+        intersection = O + t*r;
+        n = -glm::normalize(intersection-sphere.pos);
+      }
+      else  // no visible intersection.
+      {
+        return false;
+      }
+    }
+    
+    return true;
+  }
 }
+
+
+
+
+

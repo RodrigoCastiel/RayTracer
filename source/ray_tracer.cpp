@@ -172,7 +172,7 @@ void RayTracer::PrintProgressBar()
   std::lock_guard<std::mutex> lock(mProgressBarMutex);
   int value = static_cast<int>((mProgressBar * 100.0)/(mBuffer.height-1));
 
-  system("clear");
+  //system("clear");
   std::cout << mProgressMessage << "\nProgress: |";
 
   for (int i = 0; i < value; i++)
