@@ -1,0 +1,5 @@
+w 1600
+h 1200
+depth 7
+anti-aliasing 1
+save_file 1

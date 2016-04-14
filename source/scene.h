@@ -8,6 +8,7 @@
 #pragma once
 
 #include "gl_header.h"
+#include "camera.h"
 
 #include <string>
 #include <vector>
@@ -29,23 +30,10 @@
 // ============================================================================================= //
 // Triangles ---
 
-// struct VertexAttrib
-// {
-//   glm::vec3 Kd;  // Material diffuse.
-//   glm::vec3 Ks;  // Material specular.
-//   glm::vec3 n;   // Vertex normal.
-//   float shininess;  // Alpha component.
-// };
-
 struct Triangle  // Triangle intersection data.
 {
   glm::vec3 v[3];  // Three vertices;
 };
-
-// struct TriangleAttrib
-// {
-//   VertexAttrib v[3];
-// };
 
 struct TriangleAttrib
 {
@@ -54,6 +42,7 @@ struct TriangleAttrib
   glm::mat3 Ks;  // Each column corresponds to a vertex specular material.
   glm::mat3 n;   // Each column corresponds to a vertex normal.
   glm::vec3 shininess;  // Each element corresponds to a vertex shininess.
+  float n_refr;  // Index of refraction.
 };
 
 // ============================================================================================= //
@@ -88,13 +77,19 @@ class Scene
 {
 public:
   // Constructor.
-  Scene() {  }
+  Scene() 
+  {
+    mCamera = new Camera();
+  }
 
   // Loads scene from a file.
   bool Load(const std::string & filePath);
 
+  // Loads .obj from.
+  bool LoadObj(const std::string & objFilePath);
+
   // TraceRay - returns a RGB vec3 containing the color of intersection.
-  glm::vec3 TraceRay(const glm::vec3 & r, const glm::vec3 & O, int depth = 20) const;
+  glm::vec3 TraceRay(const glm::vec3 & r, const glm::vec3 & O, int depth = 3) const;
 
   // Returns the index of the nearest triangle reachable from input ray.
   // If there is a valid triangle, it also outputs barycentric coordinates,
@@ -114,7 +109,13 @@ public:
   // Prints a log containing general Scene data.
   void Log(std::ostream & stream);
 
+  // Returns camera.
+  Camera* GetCamera() const { return mCamera; }
+
 private:
+  // Camera.
+  Camera* mCamera { nullptr };
+
   // List of all triangles 
   // and list of all corresponding attributes.
   std::vector<Triangle> mTriangles;

@@ -10,38 +10,30 @@
 #include "camera.h"
 #include "scene.h"
 
+#include <fstream>
+#include <iostream>
+
 // ============================================================================================= //
 
-void RayTracer::RenderFrame(const Scene & scene, const Camera & camera)
+void RayTracer::RenderFrame(const Scene & scene, const std::string & outputFilePath)
 {
-  std::chrono::high_resolution_clock::time_point start;
-  start = std::chrono::high_resolution_clock::now();
+    RayTracer::ParallelRender(scene);
 
-  for(unsigned int y = 0; y < mBuffer.height; y++)
-  {
-    for(unsigned int x = 0; x < mBuffer.width; x++)
+    if (mSettings.mAntiAliasing)
     {
-      unsigned char* pixel = mBuffer.GetPixel(x, y);
-      glm::vec3 O = camera.GetCenterCoordinates();
-      glm::vec3 r = camera.CastRay(x, y, mBuffer.width, mBuffer.height);
-      glm::vec3 rgb = scene.TraceRay(r, O);
-
-      pixel[0] = static_cast<unsigned char>(std::min(rgb[0], 1.0f) * 255);
-      pixel[1] = static_cast<unsigned char>(std::min(rgb[1], 1.0f) * 255);
-      pixel[2] = static_cast<unsigned char>(std::min(rgb[2], 1.0f) * 255);
+       RayTracer::AdaptiveAntiAliasing(scene);
     }
-  }
 
-  auto end = std::chrono::high_resolution_clock::now();
-  auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
-  double delta_t =  duration / 1000000000.0;
-
-  std::cout << "Frame rendered. Elapsed time: " << delta_t << " seconds.\n";
+    if (mSettings.mSaveFile)
+    {
+      RayTracer::SaveFrame(outputFilePath);
+    }
 }
 
-void RayTracer::ParallelRender(const Scene & scene, const Camera & camera, int numThreads)
+void RayTracer::ParallelRender(const Scene & scene, int numThreads)
 {
   std::vector<std::thread> threads(numThreads);
+  Camera& camera = *(scene.GetCamera());
   auto& buffer = mBuffer;
 
   mProgressMessage = "Ray Tracing First Stage - Initial computation";
@@ -56,7 +48,7 @@ void RayTracer::ParallelRender(const Scene & scene, const Camera & camera, int n
         unsigned char* pixel = buffer.GetPixel(x, y);
         glm::vec3 O = camera.GetCenterCoordinates();
         glm::vec3 r = camera.CastRay(x, y, buffer.width, buffer.height);
-        glm::vec3 rgb = scene.TraceRay(r, O);     
+        glm::vec3 rgb = scene.TraceRay(r, O, mSettings.mRecursionDepth);     
 
         pixel[0] = static_cast<unsigned char>(std::min(rgb[0], 1.0f) * 255);
         pixel[1] = static_cast<unsigned char>(std::min(rgb[1], 1.0f) * 255);
@@ -88,13 +80,14 @@ void RayTracer::ParallelRender(const Scene & scene, const Camera & camera, int n
   std::cout << "Frame rendered. Elapsed time: " << delta_t << " seconds.\n";
 }
 
-void RayTracer::AdaptativeAntiAliasing(const Scene & scene, const Camera & camera, int numThreads,
+void RayTracer::AdaptiveAntiAliasing(const Scene & scene, int numThreads,
   int numSuperSample)
 {
   std::vector<std::thread> threads(numThreads);
+  Camera& camera = *(scene.GetCamera());
   auto& buffer = mBuffer;
 
-  mProgressMessage = "Ray Tracing Anti-aliasing - Adaptative Supersampling";
+  mProgressMessage = "Ray Tracing Anti-aliasing - Adaptive Supersampling";
 
   RayTracer::ClearProgressBar();
   auto Renderer = [this, &buffer, &scene, &camera, numThreads, numSuperSample] (int id)
@@ -122,7 +115,7 @@ void RayTracer::AdaptativeAntiAliasing(const Scene & scene, const Camera & camer
           {
             float theta = 2.0 * M_PI * static_cast<float>(i)/(numSuperSample);
             glm::vec3 r = camera.CastRay(x + 0.5*cos(theta), y + 0.5*sin(theta), buffer.width, buffer.height);
-            rgb += scene.TraceRay(r, O);
+            rgb += scene.TraceRay(r, O, mSettings.mRecursionDepth);
           }
           rgb *= 1.0/(numSuperSample);
 
@@ -158,7 +151,7 @@ void RayTracer::AdaptativeAntiAliasing(const Scene & scene, const Camera & camer
   auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
   double delta_t =  duration / 1000000000.0;
 
-  std::cout << "Adaptative Anti-aliasing finished. Elapsed time: " << delta_t << " seconds.\n";
+  std::cout << "Adaptive Anti-aliasing finished. Elapsed time: " << delta_t << " seconds.\n";
 }
 
 void RayTracer::IncrementProgressBar()
@@ -205,3 +198,51 @@ void RayTracer::DrawFrame()
 }
 
 // ============================================================================================= //
+
+void RayTracerSettings::Load(const std::string & configFilePath)
+{
+  std::ifstream file(configFilePath, std::ifstream::in);
+
+  if (file.is_open())
+  {
+    std::string property;
+    int value;
+
+    while (file >> property)
+    {
+      if (!(file >> value))
+      {
+        continue;
+      }
+
+      if (property == "w")
+      {
+        mWidth = value;
+      }
+      else if (property == "h")
+      {
+        mHeight = value;
+      }
+      else if (property == "depth")
+      {
+        mRecursionDepth = (value > 0) ? (value%25) : 1;
+      }
+      else if (property == "anti-aliasing") 
+      {
+        mAntiAliasing = (value != 0);
+      }
+      else if (property == "save_file")
+      {
+        mSaveFile = (value != 0);
+      }
+    }
+  }
+  else
+  {
+    std::cerr << "ERROR Couldn't open the Ray Tracer configuration file at " << configFilePath << std::endl;
+  }
+
+}
+
+
+

@@ -46,7 +46,7 @@ glm::vec3 Scene::TraceRay(const glm::vec3 & r, const glm::vec3 & O, int depth) c
       Kd = attrib.Kd * barycentric;
       Ks = attrib.Ks * barycentric;
       alpha = glm::dot(attrib.shininess, barycentric);
-      n_refr = 1.0f;
+      n_refr = attrib.n_refr;
     }
     else if ( ((nearestTriangleIndex == -1) && (nearestSphereIndex != -1))                           // Sphere only or
            || ((nearestTriangleIndex != -1) && (nearestSphereIndex != -1) && t_sphere < t_triangle)) // Sphere closer than triangle
@@ -78,7 +78,13 @@ glm::vec3 Scene::TraceRay(const glm::vec3 & r, const glm::vec3 & O, int depth) c
       // http://graphics.stanford.edu/courses/cs148-10-summer/docs/2006--degreve--reflection_refraction.pdf
       
       glm::vec3 refracted_color(0.0f);
-      glm::vec3 reflected_color = Scene::TraceRay(glm::normalize(glm::reflect(r, n)), f_pos, depth-1);
+      glm::vec3 reflected_color(0.0f);
+
+      // Reflect if specular coeffiecient is non-zero.
+      if (Ks[0] > kEpsilon && Ks[1] > kEpsilon && Ks[2] > kEpsilon) 
+      {
+          reflected_color = Scene::TraceRay(glm::normalize(glm::reflect(r, n)), f_pos, depth-1);
+      }
 
       float n_1 = 1.00f;   // Air.
       float n_2 = n_refr;   //n_refr;  // Index of refraction of the sphere.
@@ -343,6 +349,7 @@ bool Scene::Load(const std::string & filePath)
         attrib.Ks[i] = Ks;
         attrib.n[i]  = n;
         attrib.shininess[i] = shininess;
+        attrib.n_refr = n_refr;
       }
 
       mTriangles.push_back(triangle);
@@ -386,12 +393,33 @@ bool Scene::Load(const std::string & filePath)
         return false;
       }
     }
+    else if (strcasecmp(type.c_str(), "obj") == 0)  // 3D Obj.
+    {
+      std::string path;
+      if(file >> path)
+      {
+        Scene::LoadObj(path);
+      }
+    }
     else if (strcasecmp(type.c_str(), "n_refr") == 0)  // Specify new index of refraction.
     {
       k--;
       if(!(file >> n_refr))
       {
         std::cerr << "ERROR Scene file parsing error - expected n_refr value.\n";
+      }
+    }
+    else if (strcasecmp(type.c_str(), "camera") == 0)
+    {
+      glm::vec3 pos, rot;
+
+      k--;
+      if (ParseAttribute(file, "pos:", pos) &&
+          ParseAttribute(file, "rot:", rot)
+          )  // Success - new camera configuration.
+      {
+        mCamera->SetPosition(pos);
+        mCamera->SetRotation(rot);
       }
     }
     // INSERT HERE NEW TYPES OF OBJECT.
@@ -403,4 +431,148 @@ bool Scene::Load(const std::string & filePath)
   }
 
   return true;
+}
+
+// ============================================================================================= //
+
+bool Scene::LoadObj(const std::string & objFilepath)
+{
+  FILE* inFile = fopen(objFilepath.c_str(), "r");
+
+  // Successfully opened the file.
+  if (inFile != nullptr)
+  {
+    char line[256];  // Line buffer.
+    char token[32];  // Token buffer.
+    char name[100];  // Group name buffer.
+    const int kNumIndices = 100;
+    std::vector<GLfloat> positions;  // List of all positions (x, y, z).
+    std::vector<GLfloat> texCoords;  // List of all texture (u, v).
+    std::vector<GLfloat> normals;    // List of all normals (nx, ny, nz).
+    bool buildingGroup = false;
+
+    // Read until get EOF.
+    while (fgets(line, sizeof(line), inFile) != nullptr)
+    {
+      // Exclude repeated spaces.
+      int i = 0;
+      while (line[i] != '\0')
+      {
+        if (line[i] == ' ' && line[i+1] == ' ')
+        {
+          for (int j = i; line[j] != '\0'; j++)
+          {
+            line[j] = line[j+1];
+          }
+        }       
+        i++; 
+      }
+
+      // Read first token.
+      sscanf(line, "%s", token);
+
+      if (strcmp(token, "g") == 0)  // New group.
+      {
+
+      }
+      else if (strcmp(token, "v") == 0)   // New vertex.
+      {
+        float x, y, z;
+        sscanf(line, "%s %f %f %f", token, &x, &y, &z);
+        positions.push_back(x);
+        positions.push_back(y);
+        positions.push_back(z);
+      }
+      else if (strcmp(token, "vt") == 0)  // New texture coordinate.
+      {
+        float u, v;
+        sscanf(line, "%s %f %f", token, &u, &v);
+        // texCoords.push_back(u);
+        // texCoords.push_back(v);
+      }
+      else if (strcmp(token, "vn") == 0)  // New normal.
+      {
+        float nx, ny, nz;
+        sscanf(line, "%s %f %f %f", token, &nx, &ny, &nz);
+        normals.push_back(nx);
+        normals.push_back(ny);
+        normals.push_back(nz);
+      }
+      else if (strcmp(token, "f") == 0)  // New face (triangle).
+      {
+        int a_v, a_vt, a_vn;
+        int b_v, b_vt, b_vn;
+        int c_v, c_vt, c_vn;
+
+        if (sscanf(line, "%s %d//%d %d//%d %d//%d", token, &a_v, &a_vn, 
+                                                           &b_v, &b_vn, 
+                                                           &c_v, &c_vn) == 7)
+        {
+            // No texture coordinates
+        }
+        else if (sscanf(line, "%s %d/%d/%d %d/%d/%d %d/%d/%d", token, &a_v, &a_vt, &a_vn, 
+                                                                      &b_v, &b_vt, &b_vn, 
+                                                                      &c_v, &c_vt, &c_vn) == 9)
+        {
+          // // Has texture coordinates.
+          // a_vt--;
+          // b_vt--;
+          // c_vt--;
+        }
+
+        a_v--; a_vn--;  
+        b_v--; b_vn--;  
+        c_v--; c_vn--;  
+
+        Triangle triangle;
+        TriangleAttrib attrib;
+
+        attrib.Ks = glm::mat3(glm::vec3(.7), glm::vec3(.7), glm::vec3(.7));
+        attrib.Kd = glm::mat3(glm::vec3(1.0, 0.0, 0.0), 
+                              glm::vec3(1.0, 0.0, 0.0), 
+                              glm::vec3(1.0, 0.0, 0.0));
+        attrib.shininess = glm::vec3(200);
+        attrib.n_refr = 1.0f;
+
+        // Vertex A.
+        triangle.v[0][0] = positions[3*a_v + 0];
+        triangle.v[0][1] = positions[3*a_v + 1];
+        triangle.v[0][2] = positions[3*a_v + 2];
+        attrib.n[0][0] = normals[3*a_vn + 0];
+        attrib.n[0][1] = normals[3*a_vn + 1];
+        attrib.n[0][2] = normals[3*a_vn + 2];
+
+        // Vertex B.
+        triangle.v[1][0] = positions[3*b_v + 0];
+        triangle.v[1][1] = positions[3*b_v + 1];
+        triangle.v[1][2] = positions[3*b_v + 2];
+        attrib.n[1][0] = normals[3*b_vn + 0];
+        attrib.n[1][1] = normals[3*b_vn + 1];
+        attrib.n[1][2] = normals[3*b_vn + 2];
+
+        // Vertex C.
+        triangle.v[2][0] = positions[3*c_v + 0];
+        triangle.v[2][1] = positions[3*c_v + 1];
+        triangle.v[2][2] = positions[3*c_v + 2];
+        attrib.n[2][0] = normals[3*c_vn + 0];
+        attrib.n[2][1] = normals[3*c_vn + 1];
+        attrib.n[2][2] = normals[3*c_vn + 2];
+
+        mTriangles.push_back(triangle);
+        mTriangleAttribList.push_back(attrib);
+      }
+      else
+      {
+        // Ignore anything else
+      }
+    }
+
+    fclose(inFile);
+    return true;
+  }
+  else  // Failed.
+  {
+    printf("ERROR Couldn't load file at %s\n", objFilepath.c_str());
+    return false;
+  }
 }

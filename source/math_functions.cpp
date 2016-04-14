@@ -35,8 +35,67 @@ bool IntersectRay(const Triangle & triangle, const glm::vec3 & ray, const glm::v
   baryCoord[0] = 1 - baryCoord[1] - baryCoord[2];
 
   // Check if u + v <= 1 and also if t > 0.
-  return (baryCoord[1] > 0) && (baryCoord[2] > 0) 
-      && (baryCoord[1] + baryCoord[2] <= 1.0f) && (t > kEpsilon);
+  return (t > kEpsilon) && (baryCoord[1] > 0) && (baryCoord[2] > 0) 
+      && (baryCoord[1] + baryCoord[2] <= 1.0f);
+}
+
+// Based on https://en.wikipedia.org/wiki/M%C3%B6ller%E2%80%93Trumbore_intersection_algorithm
+// Moller-Trumbore algorithm for intersection between rays and triangles.
+bool IntersectRayOpt(const Triangle & triangle, const glm::vec3 & ray, const glm::vec3 & O,
+                     glm::vec3 & intersection, glm::vec3 & baryCoord, float & t)
+{
+  glm::vec3 e1 = triangle.v[1] - triangle.v[0];  // Edge vector 1 (V0 -> V1).
+  glm::vec3 e2 = triangle.v[2] - triangle.v[0];  // Edge vector 2 (V0 -> V2).
+
+  // Compute determinant and check whether intersection with plane containing triangle occurs or not.
+  glm::vec3 P = glm::cross(ray, e2);
+  float det = glm::dot(e1, P);
+  
+  if (std::abs(det) < 1e-5)  // Determinant is 0, intersection does not exist.
+  {
+    return false;
+  }
+
+  float inv_det = 1.f / det;
+
+  // Calculate distance from V0 to ray origin.
+  glm::vec3 T = O - triangle.v[0];
+
+  // Calculate u parameter and test bound.
+  float u = glm::dot(T, P) * inv_det;
+
+  // The intersection lies outside of the triangle
+  if (u < 0.f || u > 1.f) 
+  {
+    return false;
+  }
+
+  //Prepare to test v parameter
+  glm::vec3 Q = glm::cross(T, e1);
+
+  // Calculate V parameter and test bound.
+  float v = glm::dot(ray, Q) * inv_det;
+
+  //The intersection lies outside of the triangle
+  if (v < 0.f || u + v  > 1.f)
+  {
+    return false;
+  }
+
+  t = glm::dot(e2, Q) * inv_det;
+
+  if (t > kEpsilon)  // At last, an intersection.
+  {
+    intersection = O + ray * t;
+    baryCoord[1] = u;
+    baryCoord[2] = v;
+    baryCoord[0] = 1.0f-u-v;
+    return true;
+  }
+  else
+  {
+    return false;
+  }
 }
 
 

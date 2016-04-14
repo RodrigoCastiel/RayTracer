@@ -22,8 +22,8 @@
 const float kGradientThreshold = 0.05f;
 const unsigned kFormatSize = 3;
 
-const unsigned kMaxWidth  = 6400;
-const unsigned kMaxHeight = 4800;
+const unsigned kMaxWidth  = 8000;
+const unsigned kMaxHeight = 6000;
 
 // ============================================================================================= //
 
@@ -90,20 +90,34 @@ struct ImgBuffer
 class Scene;
 class Camera;
 
+struct RayTracerSettings
+{
+  int mWidth  { kDefaultWidth  };
+  int mHeight { kDefaultHeight };
+
+  int mRecursionDepth {   3  };
+  bool mAntiAliasing  { true };
+  bool mSaveFile { true };
+
+  void Load(const std::string & configFilePath);
+};
+
 class RayTracer
 {
 public:
   RayTracer() 
   { 
     mBuffer.Clear();
+    mBuffer.width  = mSettings.mWidth;
+    mBuffer.height = mSettings.mHeight;
   }
 
   // Performs Ray Tracing algorithm and outputs to internal ImgBuffer.
-  void RenderFrame(const Scene & scene, const Camera & camera);
+  void RenderFrame(const Scene & scene, const std::string & outputFilePath);
 
-  void ParallelRender(const Scene & scene, const Camera & camera, int numThreads = 8);
+  void ParallelRender(const Scene & scene, int numThreads = 8);
 
-  void AdaptativeAntiAliasing(const Scene & scene, const Camera & camera, int numThreads = 8,
+  void AdaptiveAntiAliasing(const Scene & scene, int numThreads = 8,
     int numSuperSample = 8);
 
   // Outputs current frame to filePath as JPEFG file.
@@ -111,6 +125,14 @@ public:
 
   // Displays internal buffer on the screen.
   void DrawFrame();
+
+  // Loads RayTracer settings from a file.
+  void LoadConfigFile(const std::string & configFilePath)
+  {
+    mSettings.Load(configFilePath);
+    mBuffer.width  = mSettings.mWidth;
+    mBuffer.height = mSettings.mHeight;
+  }
 
   // Returns the internal ImgBuffer.
   ImgBuffer<kMaxWidth, kMaxHeight> & GetFrame() { return mBuffer; }
@@ -122,6 +144,7 @@ public:
 
 private:
   ImgBuffer<kMaxWidth, kMaxHeight> mBuffer;
+  RayTracerSettings mSettings;
 
   int mProgressBar { 0 };
   std::mutex mProgressBarMutex;

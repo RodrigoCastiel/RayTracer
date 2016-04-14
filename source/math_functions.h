@@ -20,6 +20,12 @@ struct Sphere;
 bool IntersectRay(const Triangle & triangle, const glm::vec3 & ray, const glm::vec3 & O,
                   glm::vec3 & intersection, glm::vec3 & baryCoord, float & t);
 
+bool IntersectRayOpt(const Triangle & triangle, const glm::vec3 & ray, const glm::vec3 & O,
+                     glm::vec3 & intersection, glm::vec3 & baryCoord, float & t);
+
+bool IntersectRayOpt2(const Triangle & triangle, const glm::vec3 & ray, const glm::vec3 & O,
+                     glm::vec3 & intersection, glm::vec3 & baryCoord, float & t);
+
 bool IntersectRay(const Sphere & sphere, const glm::vec3 & r, const glm::vec3 & O,
                   glm::vec3 & intersection, glm::vec3 & n, float & t);
 

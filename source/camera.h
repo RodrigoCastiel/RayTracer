@@ -10,8 +10,8 @@
 #include <glm/glm.hpp>
 #include <functional>
 
-const unsigned kDefaultWidth  = 6400;
-const unsigned kDefaultHeight = 4800;
+const unsigned kDefaultWidth  = 800;
+const unsigned kDefaultHeight = 600;
 
 class Camera
 {
@@ -25,6 +25,10 @@ public:
   // Setters and getters.
   void SetPosition(float x, float y, float z);
   void SetRotation(float rx, float ry, float rz);
+  
+  inline void SetPosition(const glm::vec3 & pos) { mPos = pos; }
+  inline void SetRotation(const glm::vec3 & rot) { mRot = rot; }
+
   inline void SetFOVy(float fovy)     { mFovy = fovy;     }
   inline void SetAspect(float aspect) { mAspect = aspect; }
 
@@ -33,9 +37,13 @@ public:
 
 private:
   // View parameters.
-  glm::vec3 mPos   { 0.0, 20.0, 17};  // Center coordinates.
-  glm::vec3 mRot   { -0.49, 0.0, 0.0};  // Rotation angles.
+  glm::vec3 mPos   { 0.0, 0.0, 0.0};  // Center coordinates.
+  glm::vec3 mRot   { 0.0, 0.0, 0.0};  // Rotation angles.
   glm::vec3 mScale { 1.0, 1.0, 1.0};  // Scales.
+
+  // glm::vec3 mPos   { -4.0, 3.0, 8.0};  // Center coordinates.
+  // glm::vec3 mRot   { 0.0, 0.0, 0.0};  // Rotation angles.
+  // glm::vec3 mScale { 1.0, 1.0, 1.0};  // Scales.
 
   // Projection parameters
   float mFovy   {M_PI/3.0};

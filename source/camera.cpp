@@ -27,6 +27,9 @@ glm::vec3 Camera::CastRay(float x_v, float y_v, float w, float h) const
                      * glm::rotate(-mRot[1], glm::vec3(0, 1, 0)) 
                      * glm::scale(mScale);
 
+  // const glm::dmat4 V = glm::lookAt(glm::vec3(mPos), glm::vec3(0), glm::vec3(0, 1, 0));
+
+
   // Unproject point to  xp, yp, z = 1, w = 1. 
   glm::vec4 ray = glm::inverse(P*V) * glm::dvec4(xp, yp, 1.0, 1.0);
 
