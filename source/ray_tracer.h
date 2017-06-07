@@ -12,6 +12,7 @@
 
 #include <mutex>
 #include <thread>
+#include <cstring>
 
 #include "gl_header.h"
 

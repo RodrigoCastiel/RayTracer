@@ -156,8 +156,8 @@ void RayTracer::AdaptiveAntiAliasing(const Scene & scene, int numThreads,
 
 void RayTracer::IncrementProgressBar()
 {
-  std::lock_guard<std::mutex> lock(mProgressBarMutex);
-  mProgressBar++;
+    std::lock_guard<std::mutex> lock(mProgressBarMutex);
+    mProgressBar++;
 }
 
 void RayTracer::PrintProgressBar()
